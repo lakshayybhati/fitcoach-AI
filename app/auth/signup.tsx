@@ -1,0 +1,140 @@
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { Link, Stack, useRouter } from 'expo-router';
+import { theme } from '@/constants/colors';
+import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/hooks/useAuth';
+import { Eye, EyeOff, UserPlus } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function SignupScreen() {
+  const router = useRouter();
+  const { signUp, isAuthLoading } = useAuth();
+  const [name, setName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [confirm, setConfirm] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => {
+    return name.trim().length > 0 && email.trim().length > 3 && password.length >= 6 && password === confirm;
+  }, [name, email, password, confirm]);
+
+  const onSubmit = useCallback(async () => {
+    if (!canSubmit) return;
+    setError(null);
+    const res = await signUp(email.trim(), password, name.trim());
+    if (!res.success) {
+      setError(res.error ?? 'Sign up failed. Try again.');
+      return;
+    }
+    router.replace('/home');
+  }, [canSubmit, email, password, name, signUp, router]);
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <View style={styles.container} testID="signup-screen">
+        <Stack.Screen options={{ title: 'Create account', headerShown: false }} />
+        <Text style={styles.title}>Create account</Text>
+        <Text style={styles.subtitle}>We’ll send a confirmation email</Text>
+
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            testID="signup-name"
+            style={styles.input}
+            placeholder="Your name"
+            placeholderTextColor={theme.color.muted}
+            value={name}
+            onChangeText={setName}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            testID="signup-email"
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor={theme.color.muted}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.passwordRow}>
+            <TextInput
+              testID="signup-password"
+              style={[styles.input, styles.passwordInput]}
+              placeholder="••••••••"
+              placeholderTextColor={theme.color.muted}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              testID="toggle-password"
+              onPress={() => setShowPassword(v => !v)}
+              style={styles.eyeBtn}
+              accessibilityLabel="Toggle password visibility"
+            >
+              {showPassword ? <EyeOff color={theme.color.ink} size={20} /> : <Eye color={theme.color.ink} size={20} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Confirm password</Text>
+          <TextInput
+            testID="signup-confirm"
+            style={styles.input}
+            placeholder="••••••••"
+            placeholderTextColor={theme.color.muted}
+            secureTextEntry={!showPassword}
+            value={confirm}
+            onChangeText={setConfirm}
+          />
+        </View>
+
+        <Button
+          title={isAuthLoading ? 'Creating…' : 'Create account'}
+          onPress={onSubmit}
+          disabled={!canSubmit || isAuthLoading}
+          icon={<UserPlus color="#fff" size={18} />}
+        />
+
+        <View style={styles.bottomRow}>
+          <Text style={styles.bottomText}>Have an account?</Text>
+          <Link href={{ pathname: '/auth/login' }} testID="go-login" style={styles.link}>
+            <Text style={styles.linkText}>Sign in</Text>
+          </Link>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.color.bg },
+  container: { flex: 1, padding: 24, gap: 16, justifyContent: 'center' },
+  title: { fontSize: 28, fontWeight: '700', color: theme.color.ink },
+  subtitle: { fontSize: 14, color: theme.color.muted, marginBottom: 8 },
+  field: { gap: 8 },
+  label: { color: theme.color.muted },
+  input: { borderWidth: 1, borderColor: theme.color.line, borderRadius: 12, paddingHorizontal: 14, height: 48, color: theme.color.ink, backgroundColor: theme.color.card },
+  passwordRow: { flexDirection: 'row', alignItems: 'center' },
+  passwordInput: { flex: 1 },
+  eyeBtn: { paddingHorizontal: 10, height: 48, justifyContent: 'center' },
+  errorText: { color: '#e5484d', marginBottom: 4 },
+  bottomRow: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
+  bottomText: { color: theme.color.muted },
+  link: { },
+  linkText: { color: theme.color.accent.primary, fontWeight: '600' },
+});
